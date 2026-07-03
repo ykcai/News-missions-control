@@ -111,5 +111,13 @@ SOURCES = {
             "weight": 0.95,
             "url": "https://blogs.nvidia.com/blog/feed/",
         },
+        {
+            "id": "yahoo_finance",
+            "name": "Yahoo Finance",
+            "region": "NA",
+            "type": "company",
+            "weight": 0.95,
+            "url": "https://finance.yahoo.com/news/rssindex",
+        },
     ],
 }
