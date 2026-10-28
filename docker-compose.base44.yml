@@ -1,0 +1,91 @@
+name: mission-control
+
+# Base44 sandbox environment: runs the app from the cloned source with live reload.
+# Frontend (Vite dev server) is the single public entry point on host port 3000 and
+# proxies /api to the FastAPI service, so the browser only ever talks to one origin.
+
+services:
+  api:
+    image: python:3.12-slim
+    working_dir: /app
+    restart: on-failure
+    labels:
+      base44.project: "Mission Control API"
+      base44.kind: "api"
+      base44.port: "8000"
+      base44.docs: "/docs"
+    command:
+      - sh
+      - -ec
+      - |
+        pip install --no-cache-dir -q -r requirements.txt
+        exec uvicorn main:app --reload --host 0.0.0.0 --port 8000 \
+          --reload-dir /app --reload-exclude 'venv/*' --reload-exclude '*.db'
+    volumes:
+      - ./backend:/app
+    environment:
+      - BASE44_PREVIEW_MODE
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    ports:
+      - "8000:8000"
+    healthcheck:
+      # Startup does a full feed warm-up before serving, hence the long grace period.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).status == 200 else 1)"
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  web:
+    image: node:22-slim
+    working_dir: /app
+    restart: on-failure
+    labels:
+      base44.project: "Mission Control"
+      base44.kind: "web"
+      base44.port: "3000"
+    command:
+      - sh
+      - -ec
+      - |
+        if [ ! -f node_modules/.base44-lock-hash ] || \
+           [ "$$(sha256sum package-lock.json | cut -d' ' -f1)" != "$$(cat node_modules/.base44-lock-hash)" ]; then
+          npm ci --no-audit --no-fund
+          sha256sum package-lock.json | cut -d' ' -f1 > node_modules/.base44-lock-hash
+        fi
+        exec npm run dev -- --host 0.0.0.0 --port 5173
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    environment:
+      - BASE44_PREVIEW_MODE
+      # Backend is a sibling compose service; the Vite dev proxy forwards /api there.
+      - API_PROXY_TARGET=http://api:8000
+      # Used by vite.config.js to extend allowedHosts for the preview proxy host.
+      - BASE44_SANDBOX_HOST_DOMAIN
+      - BASE44_PUBLIC_HOST_SUFFIX
+      # Honoured by Vite >= 6.1; harmless on this project's Vite 5.4.
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    ports:
+      - "3000:5173"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5173/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  frontend_node_modules:
