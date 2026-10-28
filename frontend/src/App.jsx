@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { RefreshCw, ShieldAlert, Radar, Video, Activity } from 'lucide-react'
-import { getCritical, getHealth, getItems, refresh } from './api'
+import { getCritical, getEarnings, getHealth, getItems, refresh } from './api'
 import StatusBar from './components/StatusBar.jsx'
 import AlertPanel from './components/AlertPanel.jsx'
 import SectorPulse from './components/SectorPulse.jsx'
 import TrendPanel from './components/TrendPanel.jsx'
 import VideoWall from './components/VideoWall.jsx'
 import NewsTable from './components/NewsTable.jsx'
+import EarningsStrip from './components/EarningsStrip.jsx'
 
 const CATEGORIES = [
   { key: 'banking_regulatory', label: 'Banking / Regulatory' },
@@ -21,6 +22,7 @@ export default function App() {
   const [banking, setBanking] = useState([])
   const [tech, setTech] = useState([])
   const [ai, setAi] = useState([])
+  const [earnings, setEarnings] = useState(null)
   const [loading, setLoading] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(null)
 
@@ -28,17 +30,19 @@ export default function App() {
     const h = await getHealth()
     setHealth(h)
 
-    const [c, b, t, a] = await Promise.all([
+    const [c, b, t, a, e] = await Promise.all([
       getCritical(),
       getItems('banking_regulatory', 220),
       getItems('technology', 200),
       getItems('ai', 200),
+      getEarnings(),
     ])
 
     setCritical(c)
     setBanking(b)
     setTech(t)
     setAi(a)
+    setEarnings(e)
     setLastRefresh(new Date())
   }
 
@@ -220,6 +224,11 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Bottom: S&P 500 companies reporting today */}
+          <div className="col-span-12">
+            <EarningsStrip data={earnings} />
           </div>
         </div>
 

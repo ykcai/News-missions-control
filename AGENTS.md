@@ -21,6 +21,10 @@ backend's CORS list stays untouched.
 
 - **No credentials are needed.** All feeds in `backend/news_sources.py` are public; data lives in
   local SQLite (`backend/news.db`, gitignored, created on first boot).
+- **Earnings strip** (`GET /api/earnings`, `backend/earnings.py`) is also keyless: it reads Nasdaq's
+  public earnings calendar for today's US/Eastern date and filters it against the S&P 500 constituent
+  CSV on GitHub. Calendar cached 30 min, constituents 24h; failures return `{"error": ...}` with
+  HTTP 200 so the dashboard still loads.
 - **Slow first boot on `api`:** startup runs a full feed warm-up (`refresh_all()` in the lifespan
   hook) before the server answers, so `/api/health` can take up to ~60s. The compose healthcheck
   uses `start_period: 120s`; do not shorten it.

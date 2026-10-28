@@ -25,6 +25,11 @@ export async function getItems(category, limit = 200) {
   return data.items || []
 }
 
+export async function getEarnings() {
+  const { data } = await api.get('/api/earnings')
+  return data
+}
+
 export async function refresh() {
   const { data } = await api.post('/api/refresh')
   return data
