@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from news_sources import SOURCES
 from ingest import fetch_source
 from storage import init_db, upsert_items, query_items, stats
+from earnings import today_earnings
 
 scheduler = BackgroundScheduler()
 
@@ -86,6 +87,12 @@ def critical(limit: int = 80) -> dict:
     merged = crit + [x for x in high if x["id"] not in {c["id"] for c in crit}]
     merged.sort(key=lambda r: (r.get("published") or r.get("inserted_at") or "", r.get("score") or 0), reverse=True)
     return {"items": merged[:limit]}
+
+
+@app.get("/api/earnings")
+def earnings() -> dict:
+    # S&P 500 members reporting today (US market date)
+    return today_earnings()
 
 
 @app.get("/api/summary")
